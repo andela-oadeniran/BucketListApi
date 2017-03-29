@@ -37,7 +37,11 @@ class TestUserModel(unittest.TestCase):
 
     def test_user_hash_password_integrity(self):
         # Test the user password
-        self.assertNotEqual()
+        self.assertNotEqual(self.user1.hash_password, 'polymath@')
+
+    def test_valid_user_hash(self):
+        # Test valid user hash password
+        self.assertEqual(self.user2.hash_password, 'polymath@')
 
 
 class TestBucketListModel(unittest.TestCase):
@@ -47,11 +51,39 @@ class TestBucketListModel(unittest.TestCase):
 
     def setUp(self):
         # set up for the test suite
-        self.bucketlist = BucketList('Things to do before getting married')
+        self.bucketlist1 = BucketList('Things to do before I get married.')
+
+    def tearDown(self):
+        # tear down data for test suite after completion
+        del self.bucketlist1
 
     def test_bucketlist_model(self):
         # test to show a bucketlist is an instance of the bucketlist class
-        self.assertIsInstance(self.bucketlist, BucketList)
+        self.assertIsInstance(self.bucketlist1, BucketList)
+
+    def test_bucket_list_name_integrity(self):
+        # test bucket list item
+        self.assertNotEqual(self.bucketlist1.bucket_list_name, 'Things to do')
+
+    def test_valid_bucket_list_name(self):
+        # test bucket list name
+        self.assertEqual(
+            self.bucketlist1.bucket_list_name,
+            'Things to do before I get married.')
+
+
+class TestBucketListItem(unittest.TestCase):
+    '''
+    Test Suite for the bucket list item class model.
+    '''
+
+    def setUp(self):
+        # test suite set up method
+        self.item1 = BucketListItem()
+
+    def tearDown(self):
+        # delete test suite data after use
+        pass
 
 
 if __name__ == '__main__':
