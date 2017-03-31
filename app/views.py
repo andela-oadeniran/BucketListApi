@@ -1,11 +1,12 @@
 #!/usr/bin/env python
-
+import json
 from bucketlist import app
-from flask import jsonify
 from flask_restful import Resource, Api, reqparse, abort
+from utilities import get_item_or_raise_error
 
 
-class BucketLists(Resource):
+
+class BucketListView(Resource):
     '''
     The class for the bucket list resource
     POST : To create a new Bucket List
@@ -16,13 +17,35 @@ class BucketLists(Resource):
     '''
 
     def get(self):
-        pass
+        try:
+            bucketlists = db.session.query.all()
+        except:
+            pass
+        else:
+            if bucketlists:
+                return bucketlists, 201
+            else:
+                return 'Not found', 404
 
-    def post(self):
+    def post(self, bucketlist):
         # This handles the c`reation of a new bucketlist
         # logic
-        pass
-
+        try:
+            name = get_item_or_raise_error(bucketlist, 'name')
+        except ValueError:
+            return abort(400, message='ValueError')
+        else:
+            bucketlist = BucketList(name, created_by)
+            return json.dumps(
+                {
+                    'id': bucketlist.id,
+                    'name': bucketlist.name,
+                    'items': bucketlist.items,
+                    'date_created': bucketlist.date_created,
+                    'date_modified': bucketlist.date_modified,
+                    'created_by': 'ladi'
+                })
+      
     def put(self):
         pass
 
@@ -30,7 +53,7 @@ class BucketLists(Resource):
         pass
 
 
-class BucketListsItems(Resource):
+class BucketListItemView(Resource):
     '''
     The class for Items in a bucket list
     POST: creates a new item in the bucketlist
@@ -40,16 +63,17 @@ class BucketListsItems(Resource):
     pass
 
 
-class RegisterUser(Resource):
+class RegisterUserView(Resource):
     pass
 
 
-class LoginUser(Resource):
+class LoginUserView(Resource):
     pass
+
 
 
 api = Api(app)
-api.add_resource(BucketLists, "/bucketlists/")
+api.add_resource(BucketListView, "/bucketlists/")
 if __name__ == '__main__':
     app.run(debug=True)
     
