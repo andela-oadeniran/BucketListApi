@@ -50,14 +50,14 @@ class BucketList(Base):
         db.DateTime, default=datetime.now, onupdate=datetime.now)
 
     def __init__(self, bucketlistname, created_by):
-        self.bucket_list_name = bucketlistname
+        self.name = bucketlistname
         self.date_created = datetime.now()
         self.date_modified = None
         self.items = []
         self.created_by = created_by
 
     def __repr__(self):
-        return '<BucketList {}>'.format(self.bucket_list_name)
+        return '<BucketList {}>'.format(self.name)
 
 
 class BucketListItem(Base):
@@ -82,6 +82,3 @@ class BucketListItem(Base):
         return '<BucketListItem {}>'.format(self.item_name)
 
 
-bucketlist = BucketList('before 30', 'ladi')
-print(bucketlist)
-print(bucketlist.date_created)
