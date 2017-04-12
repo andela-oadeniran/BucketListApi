@@ -8,4 +8,5 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(
     BASE_DIR + 'buckelist.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['ERROR_404_HELP'] = False
+app.config['SECRET_KEY'] = 'polymath'
 db = SQLAlchemy(app)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import json
 import unittest
-from testcontext import BucketListView, BucketListItemView
+from testcontext 
 
 
 class BucketListTest(unittest.TestCase):
@@ -17,7 +17,8 @@ class BucketListTest(unittest.TestCase):
     def setUp(self):
         # Set up the the test class.
         self.bucketlist = BucketListView()
-        self.bucketlist1 = {'name': 'Do before 30', 'items': []}
+        self.bucketlist1 = {'name': 'Do before 30', 'items': [],
+        'created_by': }
         self.bucketlist_bad_input = {}
 
     def tearDown(self):
