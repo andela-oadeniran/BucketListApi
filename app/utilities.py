@@ -7,7 +7,6 @@ def save(obj, db):
         db.session.add(obj)
         db.session.commit()
         return True
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        raise e
         return False

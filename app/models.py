@@ -50,7 +50,7 @@ class User(Base):
         # check password hash matches password.
         return pwd_context.verify(password, self.password_hash)
 
-    def generate_auth_token(self, expiration=600):
+    def generate_auth_token(self, expiration=86400):
             s = Serializer(app.config['SECRET_KEY'], expires_in=expiration)
             return s.dumps({'id': self.id})
 
@@ -61,9 +61,9 @@ class User(Base):
         try:
             data = s.loads(token)
         except SignatureExpired:
-            return None # valid token, but expired
+            return None  # valid token, but expired
         except BadSignature:
-            return None # invalid token
+            return None  # invalid token
         user = User.query.get(data['id'])
         return user
 
@@ -105,8 +105,9 @@ class BucketListItem(Base):
     bucketlist_id = db.Column(db.String, db.ForeignKey(
         'bucket_list.id'))
 
-    def __init__(self, item_name, date_done=False):
+    def __init__(self, item_name, bucketlist_id, done=False):
         self.name = item_name
+        self.bucketlist_id = bucketlist_id
 
     def __repr__(self):
         return '<BucketListItem {}>'.format(self.item_name)

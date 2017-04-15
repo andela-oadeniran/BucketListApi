@@ -1,12 +1,18 @@
 #!/usr/bin/env python
-from collections import OrderedDict
 from bucketlist import app, db
-from flask import request, g, jsonify
+from collections import OrderedDict
+from flask import g
 from flask_httpauth import HTTPBasicAuth
 from flask_restful import Resource, Api, abort, reqparse
-from utilities import save
 from models import BucketList, BucketListItem, User
 from sqlalchemy import and_
+from utilities import save
+from webargs import fields
+from webargs.flaskparser import use_args, use_kwargs
+
+limit_field = {
+    'limit': fields.Int()
+}
 
 auth = HTTPBasicAuth()
 
@@ -36,37 +42,41 @@ class BucketListAPI(Resource):
     '''
     decorators = [auth.login_required]
 
-    def __init__(self, reqparse=reqparse):
+    def __init__(self):
         self.parser = reqparse.RequestParser()
-        self.parser.add_argument('name', required=True, type=str)
+        self.parser.add_argument('name', required=True, type=str,
+                                 help="bucket list name is required")
+        self.parser.add_argument('limit', location='args')
+        self.created_by = g.user.username
 
-    def post(self, g=g, db=db, bucketlist_id=None):
+    def post(self, bucketlist_id=None):
         # This handles the creation of a new bucketlist
         if bucketlist_id:
             abort(404, message="Invalid URL")
         self.name = self.parser.parse_args().get('name')
-        created_by = g.user.username
-        if not self.name.strip():
-            abort(400, message='Bucket list name cannot be empty!')
-        elif BucketList.query.filter_by(
-                created_by=created_by).filter_by(name=self.name).first():
+        if not self.__check_name():
+            abort(400,
+                  message='Bucketlist name must be at least 8 characters')
+        elif self.__bucket_list_name_exists():
             abort(400, message='Bucket List name already exists')
         else:
-            bucketlist = BucketList(self.name, created_by)
+            bucketlist = BucketList(self.name.title(), self.created_by)
             if save(bucketlist, db):
                 return bucketlist.as_dict(), 201  # return serialize
-            return abort(400, message='Error in request!!!')
+            return abort(400, message='Could not save the request!!!')
 
-    def get(self, bucketlist_id=None, g=g):
+    @use_args(limit_field)
+    def get(self, args, bucketlist_id=None):
         # get the list of bucket lists or an item and return.
-        created_by = g.user.username
         if bucketlist_id:
-            bucketlist = BucketList.query.filter_by(
-                created_by=created_by).filter_by(id=bucketlist_id).first()
+            bucketlist = BucketList.query.filter(and_(
+                BucketList.created_by == self.created_by,
+                BucketList.id == bucketlist_id)).first_or_404()
             return bucketlist.as_dict()
         else:
+            # limit = args.get('limit', 20)
             bucketlists = BucketList.query.filter_by(
-                created_by=created_by).all()
+                created_by=self.created_by).paginate(page=1, per_page=1).items
             if bucketlists:
                 return OrderedDict(
                     [('Bucketlist{}'.format(
@@ -74,42 +84,52 @@ class BucketListAPI(Resource):
                         for bucketlist in bucketlists])
             return abort(404, message='You don\'t have any bucketlist yet!')
 
-    def put(self, bucketlist_id=None, g=g, db=db):
+    def put(self, bucketlist_id=None):
         # update a bucketlist with id(bucketList_id)
-        if not bucketlist_id:
+        if not bucketlist_id or not (
+                BucketList.query.get(
+                    bucketlist_id).created_by == self.created_by):
             abort(404, message="Invalid URL")
         self.name = self.parser.parse_args().get('name')
-        created_by = g.user.username
-        if not self.name.strip():
-            abort(400, message="Name field cannot be empty")
-        else:
-            if db.session.query(
-                BucketList).filter(and_(
-                    BucketList.created_by == created_by,
-                    BucketList.id == bucketlist_id)).update(
-                    {'name': self.name}):
-                db.session.commit()
-                return BucketList.query.get(bucketlist_id).as_dict()
-            return abort(404, message='Bucketlist{} does not exist'.format(
-                bucketlist_id))
+        if not self.__check_name():
+            abort(400, message="name field cannot be empty or too short")
+        elif self.__bucket_list_name_exists():
+            abort(400, message='Bucket List name already exists')
+        elif db.session.query(
+            BucketList).filter(and_(
+                BucketList.created_by == self.created_by,
+                BucketList.id == bucketlist_id)).update(
+                {'name': self.name.title()}):
+            db.session.commit()
+            return BucketList.query.get(bucketlist_id).as_dict()
+        abort(400, message='Could not update bucketlist {}'.format(
+            bucketlist_id))
 
-    def delete(self, bucketlist_id=None, g=g, db=db):
+    def delete(self, bucketlist_id=None):
         # view to delete a bucket list with the associated id
         if not bucketlist_id:
             abort(404, message="Invalid URL")
-        created_by = g.user.username
         if db.session.query(BucketList).filter(
             and_(
-                BucketList.created_by == created_by,
+                BucketList.created_by == self.created_by,
                 BucketList.id == bucketlist_id)).delete():
             db.session.commit()
+            return "successfully deleted bucketlist {}".format(bucketlist_id)
         else:
             abort(
-                404, message='Bucketlist{} does not exist'.format(
+                404, message='Bucketlist {} does not exist'.format(
                     bucketlist_id))
 
+    def __check_name(self):
+        return len(self.name.strip()) > 7
 
-class BucketListItemView(Resource):
+    def __bucket_list_name_exists(self):
+        bucketlist = BucketList.query.filter_by(name=self.name.title()).first()
+        return bucketlist.created_by == self.created_by if (
+            bucketlist) else False
+
+
+class BucketListItemAPI(Resource):
     '''
     The class for Items in a bucket list
     POST: creates a new item in the bucketlist
@@ -118,41 +138,98 @@ class BucketListItemView(Resource):
     '''
     decorators = [auth.login_required]
 
-    def post(self):
+    def __init__(self):
+        self.parser = reqparse.RequestParser()
+        self.parser.add_argument(
+            'name', type=str, help='Item name is required')
+        self.parser.add_argument(
+            'done', type=str, help='The done field can only be a boolean')
+        self.item_name = self.parser.parse_args().get('name')
+        self.done = self.parser.parse_args().get('done')
+        self.created_by = g.user.username
+
+    def post(self, bucketlist_id, item_id=None):
         # method to handle post request
-        item_name = request.json.get('name')
-        if item_name:
-            item = BucketListItem(item_name)
+        if item_id:
+            abort(405,
+                  message="The method is not supported for the requested URL")
+        elif not self.__check_bucket_list_with_user(bucketlist_id):
+            abort(404, message='Invalid bucketlist id in URL')
+        elif not self.__check_name():
+            abort(400, message="item name required"
+                  " and must have at least 10 characters")
+        elif self.__check_item_name_with_user():
+            abort(400, message="item name already exists")
         else:
-            abort(400)
-        bucketlist = BucketList.query.get_or_404(bucketlist_id)
-        db.session.add(item)
-        db.session.commit()
-        return {
-               "items": bucketlist.items       
-          }
+            item = BucketListItem(self.item_name.title(), bucketlist_id)
+            if save(item, db):
+                return item.as_dict(), 201
+            else:
+                abort(400, message='Item name could not be saved')
 
-    def put(self, bucketlist_id, item_id):
+    def put(self, bucketlist_id, item_id=None):
         # method handles the put request to the resource
-        # name = request.args.get('name')
-        done = request.json.get('done')
-        if done.title() == "True":
-            BucketList.query.get_or_404(bucketlist_id)
-            db.session.query(BucketListItem).filter(
-                BucketListItem.id == item_id).update({'done': True})
+        # name = request.args.get('name') or self.done
+        if not item_id:
+            abort(405,
+                  message="The method is not supported for the requested URL")
+        elif not (self.__check_bucket_list_with_user(bucketlist_id) and
+                  self.__check_item_id_with_bucketlist(
+                item_id, bucketlist_id)):
+            abort(404, message='Invalid bucketlist/item id in URL')
+        elif (self.__check_name() and not
+              self.__check_item_name_with_user() and
+              db.session.query(BucketListItem).filter_by(
+                id=item_id).update({'name': self.item_name.title()})):
             db.session.commit()
-            return {'here': 'now'}
+            return BucketListItem.query.get(item_id).as_dict()
+        elif (self.__check_done() and
+              db.session.query(BucketListItem).filter_by(
+                id=item_id).update({'done': True})):
+            db.session.commit()
+            return BucketListItem.query.get(item_id).as_dict()
         else:
-            abort(400)
+            abort(400, message='bad request')
 
-    def delete(self, bucketlist_id, item_id):
+    def delete(self, bucketlist_id, item_id=None):
         # method handles the delete request to the route
-        BucketList.query.get_or_404(bucketlist_id)
-        if db.session.query(BucketListItem).filter(
-                BucketListItem.id == item_id).delete():
+        if not item_id:
+            abort(
+                405, message="The method is not"
+                " supported for the requested URL")
+        elif not (self.__check_bucket_list_with_user(bucketlist_id) and
+                  self.__check_item_id_with_bucketlist(item_id, bucketlist_id)
+                  ):
+            abort(404, message="Invalid URL")
+        elif db.session.query(BucketListItem).filter_by(id=item_id).delete():
             db.session.commit()
-        else:
-            abort(400)
+            return "Successfully deleted Item"
+
+    def __check_name(self):
+        return len(self.item_name.strip()) > 10 if self.item_name else False
+
+    def __check_done(self):
+        return self.done.lower() == 'true' if self.done else False
+
+    def __check_bucket_list_with_user(self, bucketlist_id):
+        bucketlist = BucketList.query.get(bucketlist_id)
+        return bucketlist.created_by == self.created_by if (
+            bucketlist) else False
+
+    @staticmethod
+    def __check_item_id_with_bucketlist(item_id, bucketlist_id):
+        # check the bucketlist item and the bucketlist
+        bucketlistitem = BucketListItem.query.get(item_id)
+        return int(bucketlistitem.bucketlist_id) == bucketlist_id if (
+            bucketlistitem) else False
+
+    def __check_item_name_with_user(self):
+        bucketlistitem = BucketListItem.query.filter_by(
+            name=self.item_name.title()).first()
+        if bucketlistitem:
+            return BucketList.query.get(
+                bucketlistitem.bucketlist_id).created_by == self.created_by
+        return False
 
 
 class UserRegAPI(Resource):
@@ -160,7 +237,7 @@ class UserRegAPI(Resource):
     The resource helps registers a new user with the post method.
     '''
 
-    def __init__(self, reqparse=reqparse):
+    def __init__(self):
         # parse the request from the client
         self.parser = reqparse.RequestParser()
         self.parser.add_argument(
@@ -172,25 +249,23 @@ class UserRegAPI(Resource):
         self.username = self.parser.parse_args().get('username')
         self.password = self.parser.parse_args().get('password')
 
-    def post(self, User=User):
+    def post(self):
         # call methods to save user data and return success or otherwise
-        if (
-            self.check_input_validity() and not
-                User.query.filter_by(username=self.username.title()).first()):
-            user = self.create_new_user()
+        if self.__check_input_validity():
+            user = self.__create_new_user()
             if user:
                 return user.get('username'), 201
             else:
-                abort(400, message='Bad request')
+                abort(400, message='Username not Available')
         else:
-            abort(400, message='Username in use or invalid username/password')
+            abort(400, message='Invalid Username/Password')
 
-    def check_input_validity(self):
+    def __check_input_validity(self):
         # check if there is data supplied
         return True if (
             self.username.isalpha() and self.password.strip()) else False
 
-    def create_new_user(self, User=User, db=db):
+    def __create_new_user(self):
         # create a user after checking some conditions
         user = User(self.username.title())
         user.hash_password(self.password)
@@ -205,35 +280,36 @@ class UserLoginAPI(Resource):
     '''
     # decorators = [auth.login_required]
 
-    def __init__(self, reqparse=reqparse):
+    def __init__(self):
         # parse the arguments.
         self.parser = reqparse.RequestParser()
         self.parser.add_argument(
-            'username', required=True, type=str)
+            'username', required=True,
+            type=str, help="Please input a Username")
         self.parser.add_argument(
-            'password', required=True, type=str)
+            'password', required=True, type=str,
+            help="Please input a password")
         self.username = self.parser.parse_args().get('username')
         self.password = self.parser.parse_args().get('password')
 
     def post(self, User=User):
         # parse and
-        user = User.query.filter_by(username=self.username).first()
+        user = User.query.filter_by(username=self.username.title()).first()
         if user and user.verify_password(self.password):
             token = user.generate_auth_token()
             return {'token': token.decode('ascii')}
         else:
-            abort(404, message='Invalid username and password')
-
-    def check_data_validity(self):
-        # check if there is data supplied
-        return True if (
-            self.username.isalpha() and self.password.strip()) else False
+            abort(404, message='Invalid username/password')
 
 
 api = Api(app)
+api.add_resource(BucketListAPI, "/bucketlists",
+                 "/bucketlists/",
+                 "/bucketlists/<int:bucketlist_id>")
 api.add_resource(
-    BucketListAPI,"/bucketlists/","/bucketlists/<int:bucketlist_id>", endpoint='bucketlist_id')
-api.add_resource(BucketListItemView, "/bucketlists/<int:bucketlist_id>/items/", "/bucketlists/<int:bucketlist_id>/items/<int:item_id>")
+    BucketListItemAPI, "/bucketlists/<int:bucketlist_id>/items",
+    "/bucketlists/<int:bucketlist_id>/items/",
+    "/bucketlists/<int:bucketlist_id>/items/<int:item_id>")
 api.add_resource(UserRegAPI, "/auth/register")
 api.add_resource(UserLoginAPI, "/auth/login")
 
