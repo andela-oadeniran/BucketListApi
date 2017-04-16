@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+from bucketlist import db
 
 
-def save(obj, db):
+def save(obj):
     # adds a valid instance to the session
     try:
         db.session.add(obj)

@@ -1,5 +1,5 @@
-#!/usr/bin/env python
 from bucketlist import app, db
+from collections import OrderedDict
 from itsdangerous import (TimedJSONWebSignatureSerializer
                           as Serializer, BadSignature, SignatureExpired)
 from passlib.apps import custom_app_context as pwd_context
@@ -7,20 +7,24 @@ from passlib.apps import custom_app_context as pwd_context
 
 class Base(db.Model):
     '''
-    Base class contains data that is common to
-    the User and Bucketlist models i.e
-    id which is the primary key, date created
-    and date modified
+    Base class for the models. Contains common data
+    to The User, Bucketlist and Bucketlist Item
+    id: primary key
+    date created: date object was created sample format "2017-04-14 10:10:58"
+    date modified: date object was modified sample format "2017-04-14 11:10:58"
     '''
     __abstract__ = True
     id = db.Column(db.Integer, primary_key=True)
-    date_created = db.Column(db.DateTime, default=db.func.current_timestamp())
+    date_created = db.Column(db.DateTime(timezone=True),
+                             default=db.func.current_timestamp())
     date_modified = db.Column(
-        db.DateTime, default=db.func.current_timestamp(),
+        db.DateTime(timezone=True), default=db.func.current_timestamp(),
         onupdate=db.func.current_timestamp())
 
     def as_dict(self):
         # unpack model properties as dict values and return
+        # this is overridden in the bucketlist class since it needs
+        # to query from the bucketlist items
         return {col.name: str(getattr(
             self, col.name))
             for col in self.__table__.columns}
@@ -28,22 +32,24 @@ class Base(db.Model):
 
 class User(Base):
     '''
-    This model holds data for a User i.e.
-    A user ID, a hash_password for verification and
-    a relationship to a user's bucketlists
+    This model holds data for a User attributes are
+    The user ID, Username and Password_Hash for verification.
     '''
     username = db.Column(
         db.String(256), nullable=False, unique=True)
     password_hash = db.Column(db.String(256), nullable=False)
-    bucket_lists = db.relationship('BucketList', backref='user',
-                                   cascade='all, delete-orphan')
+    bucketlists = db.relationship('BucketList',
+                                  backref=db.backref('user', lazy='joined'),
+                                  cascade='all, delete-orphan', lazy='dynamic'
+                                  )
 
-    def __init__(self, name):
+    def __init__(self, name, password):
         self.username = name
+        self.password = password
 
-    def hash_password(self, password):
+    def hash_password(self):
         # generate a hash for the password
-        self.password_hash = pwd_context.encrypt(password)
+        self.password_hash = pwd_context.encrypt(self.password)
         return self.password_hash
 
     def verify_password(self, password):
@@ -51,8 +57,9 @@ class User(Base):
         return pwd_context.verify(password, self.password_hash)
 
     def generate_auth_token(self, expiration=86400):
-            s = Serializer(app.config['SECRET_KEY'], expires_in=expiration)
-            return s.dumps({'id': self.id})
+        # generate an auth token that lasts for a day.
+        s = Serializer(app.config['SECRET_KEY'], expires_in=expiration)
+        return s.dumps({'id': self.id})
 
     @staticmethod
     def verify_auth_token(token):
@@ -67,10 +74,9 @@ class User(Base):
         user = User.query.get(data['id'])
         return user
 
-    def get(self, attr):
-        return {
-            attr: getattr(self, attr)
-        }
+    def as_dict(self):
+        return "Hello your username is {} with password ***{}***".format(
+            self.username, self.password[3:-3])
 
     def __repr__(self):
         return '<Created by {}>'.format(self.username)
@@ -81,15 +87,27 @@ class BucketList(Base):
     This is the one stop data place for
     a single bucketlist.
     '''
-    created_by = db.Column(db.String, db.ForeignKey('user.id'))
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'))
     name = db.Column(db.String(256))
     items = db.relationship('BucketListItem',
-                            backref='bucket_list',
-                            cascade='all, delete-orphan')
+                            backref=db.backref('bucket_list', lazy='joined'),
+                            cascade='all, delete-orphan', lazy='dynamic')
 
     def __init__(self, bucketlistname, created_by):
         self.name = bucketlistname
         self.created_by = created_by
+
+    def as_dict(self):
+        # render the bucketlists
+        items = [str(item.as_dict()) for item in self.items.all()]
+        return OrderedDict([
+            ('id', str(self.id)),
+            ('name', str(self.name)),
+            ('items', items),
+            ('date_created', str(self.date_created)),
+            ('date_modified', str(self.date_modified)),
+            ('created_by', str(self.created_by))
+        ])
 
     def __repr__(self):
         return '<BucketList {}>'.format(self.name)
@@ -102,14 +120,19 @@ class BucketListItem(Base):
     '''
     done = db.Column(db.Boolean, default=False)
     name = db.Column(db.String(256))
-    bucketlist_id = db.Column(db.String, db.ForeignKey(
+    bucketlist_id = db.Column(db.Integer, db.ForeignKey(
         'bucket_list.id'))
 
     def __init__(self, item_name, bucketlist_id, done=False):
         self.name = item_name
         self.bucketlist_id = bucketlist_id
 
+    def as_dict(self):
+        return {col.name: str(getattr(
+            self, col.name))
+            for col in self.__table__.columns if col.name != 'bucketlist_id'}
+
     def __repr__(self):
-        return '<BucketListItem {}>'.format(self.item_name)
+        return '<BucketListItem {}>'.format(self.name)
 
 

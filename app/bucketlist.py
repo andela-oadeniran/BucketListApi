@@ -1,7 +1,10 @@
-#!/usr/bin/env python
 import os
+
+
 from flask_sqlalchemy import SQLAlchemy
 from flask import Flask
+
+
 app = Flask(__name__)
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(
