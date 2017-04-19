@@ -2,3 +2,15 @@
 Flask==0.12
 nose==1.3.7
 pep8==1.7.0
+alembic==0.9.1
+Flask-HTTPAuth==3.2.2
+Flask-Migrate==2.0.3
+Flask-RESTful==0.3.5
+Flask-Script==2.0.5
+Flask-SQLAlchemy==2.2
+gunicorn==19.7.1
+itsdangerous==0.24
+SQLAlchemy==1.1.6
+webargs==1.6.
+passlib==1.7.1
+nose==1.3.7
