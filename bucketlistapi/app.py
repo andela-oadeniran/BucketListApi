@@ -4,7 +4,7 @@ from resources import (
     BucketListAPI, BucketListItemAPI, UserRegAPI, UserLoginAPI)
 
 
-api = Api(app)
+api = Api(app, prefix='/api/v1/')
 
 
 api.add_resource(UserRegAPI, "/auth/register")
