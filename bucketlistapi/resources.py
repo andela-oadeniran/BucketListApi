@@ -1,56 +1,26 @@
-from bucketlist import app, db
 from collections import OrderedDict
 from flask import g, request
 from flask_httpauth import HTTPBasicAuth
-from flask_restful import Resource, Api, abort
-from models import BucketList, BucketListItem, User
+from flask_restful import abort, Resource
 from sqlalchemy import and_
-from utilities import save
-from webargs import fields, validate
 from webargs.flaskparser import use_args
+from utils import (
+    db, user_reg_login_field, name_field,
+    name_done_field, limit_field, save)
+from models import BucketList, BucketListItem, User
 
 
-limit_field = {
-    'limit': fields.Int(),
-    'page': fields.Int(),
-    'q': fields.String()
-}
-
-user_reg_login_field = {
-    'username': fields.Str(required=True, validate=validate.Length(8)),
-    'password': fields.Str(required=True, validate=validate.Length(8))
-}
-
-name_field = {
-    'name': fields.Str(required=True, validate=validate.Length(10))
-}
-
-name_done_field = {
-    'name': fields.Str(validate=validate.Length(10)),
-    'done': fields.Bool()
-}
+# api = Api(app)
 
 auth = HTTPBasicAuth()
-
-
-@auth.verify_password
-def verify_password(username_or_token, password):
-    # first try to authenticate by token
-    user = User.verify_auth_token(username_or_token)
-    if not user:
-        # try to authenticate with username/password
-        username_or_token = username_or_token.title()
-        user = User.query.filter_by(username=username_or_token).first()
-        if not user or not user.verify_password(password):
-            return False
-    g.user = user
-    return True
 
 
 class UserRegAPI(Resource):
     '''
     The resource helps registers a new user with the post method.
     [POST]
+
+    params: username and password.
     '''
 
     @use_args(user_reg_login_field)
@@ -81,7 +51,8 @@ class UserRegAPI(Resource):
         return user
 
     def check_user_exists(self):
-        return User.query.filter_by(username=self.username.strip().title()).first()
+        return User.query.filter_by(
+            username=self.username.strip().title()).first()
 
     @staticmethod
     # save a user in the database using the save() utilitity
@@ -99,7 +70,8 @@ class UserLoginAPI(Resource):
         # Return token for valid user
         self.username = args.get('username')
         self.password = args.get('password')
-        user = User.query.filter_by(username=self.username.strip().title()).first()
+        user = User.query.filter_by(
+            username=self.username.strip().title()).first()
         if user and user.verify_password(self.password):
             token = user.generate_auth_token()
             return {'token': token.decode('ascii')}
@@ -337,16 +309,28 @@ class BucketListItemAPI(Resource):
         return False
 
 
-api = Api(app)
-api.add_resource(UserRegAPI, "/auth/register")
-api.add_resource(UserLoginAPI, "/auth/login")
-api.add_resource(BucketListAPI, "/bucketlists",
-                 "/bucketlists/",
-                 "/bucketlists/<int:bucketlist_id>")
-api.add_resource(
-    BucketListItemAPI, "/bucketlists/<int:bucketlist_id>/items",
-    "/bucketlists/<int:bucketlist_id>/items/",
-    "/bucketlists/<int:bucketlist_id>/items/<int:item_id>")
 
-if __name__ == '__main__':
-    app.run(debug=True)
+
+
+# api.add_resource(UserRegAPI, "/auth/register")
+# api.add_resource(UserLoginAPI, "/auth/login")
+# api.add_resource(BucketListAPI, "/bucketlists",
+#                  "/bucketlists/",
+#                  "/bucketlists/<int:bucketlist_id>")
+# api.add_resource(
+#     BucketListItemAPI, "/bucketlists/<int:bucketlist_id>/items",
+#     "/bucketlists/<int:bucketlist_id>/items/",
+#     "/bucketlists/<int:bucketlist_id>/items/<int:item_id>")
+
+
+# @app.route('/', methods=['GET'])
+# def home_page():
+#     return 'Welcome to BucketList API Home. '\
+#         'Register and Login to start using the Service'
+
+
+# @app.errorhandler(404)
+# def handle_error(message):
+#     return "Resource not found", 404
+
+# app.run(debug=True)
