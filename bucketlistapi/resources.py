@@ -4,15 +4,27 @@ from flask_httpauth import HTTPBasicAuth
 from flask_restful import abort, Resource
 from sqlalchemy import and_
 from webargs.flaskparser import use_args
-from utils import (
-    db, user_reg_login_field, name_field,
-    name_done_field, limit_field, save)
-from models import BucketList, BucketListItem, User
 
 
-# api = Api(app)
+from bucketlistapi.utils import (user_reg_login_field, name_field,
+                                 name_done_field, limit_field, save)
+from bucketlistapi.models import BucketList, BucketListItem, User
+from bucketlistapi import db
 
 auth = HTTPBasicAuth()
+
+
+@auth.verify_password
+def verify_password(username_or_token, password):
+    # first try to authenticate by token
+    user = User.verify_auth_token(username_or_token)
+    if not user:
+        # try to authenticate with username/password
+        user = User.query.filter_by(username=username_or_token).first()
+        if not user or not user.verify_password(password):
+            return False
+    g.user = user
+    return True
 
 
 class UserRegAPI(Resource):
@@ -141,9 +153,10 @@ class BucketListAPI(Resource):
             bucketlists = bucketlists.paginate(
                 page=page, per_page=limit, error_out=False)
             prev_page = str(request.url_root) +\
-                'bucketlists?' + 'limit=' + str(limit) + '&page=' +\
+                'api/v1/bucketlists?' + 'limit=' + str(limit) + '&page=' +\
                 str(page - 1) if bucketlists.has_prev else None
-            next_page = str(request.url_root) + 'bucketlists?' + 'limit=' +\
+            next_page = str(
+                request.url_root) + 'api/v1/bucketlists?' + 'limit=' +\
                 str(limit) + '&page=' + str(page + 1) if (
                 bucketlists.has_next) else None
             bucketlists_per_page = OrderedDict([('Bucketlist{}'.format(
@@ -308,29 +321,3 @@ class BucketListItemAPI(Resource):
                 bucketlistitem.bucketlist_id).created_by) == self.created_by
         return False
 
-
-
-
-
-# api.add_resource(UserRegAPI, "/auth/register")
-# api.add_resource(UserLoginAPI, "/auth/login")
-# api.add_resource(BucketListAPI, "/bucketlists",
-#                  "/bucketlists/",
-#                  "/bucketlists/<int:bucketlist_id>")
-# api.add_resource(
-#     BucketListItemAPI, "/bucketlists/<int:bucketlist_id>/items",
-#     "/bucketlists/<int:bucketlist_id>/items/",
-#     "/bucketlists/<int:bucketlist_id>/items/<int:item_id>")
-
-
-# @app.route('/', methods=['GET'])
-# def home_page():
-#     return 'Welcome to BucketList API Home. '\
-#         'Register and Login to start using the Service'
-
-
-# @app.errorhandler(404)
-# def handle_error(message):
-#     return "Resource not found", 404
-
-# app.run(debug=True)

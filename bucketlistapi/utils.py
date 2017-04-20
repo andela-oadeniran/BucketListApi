@@ -1,11 +1,7 @@
 # from bucketlist import db
-import os
-import sys
-BASE_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-sys.path.append(BASE_DIR)
-
-from bucketlistapi import app, db
 from webargs import fields, validate
+from bucketlistapi import db
+
 
 user_reg_login_field = {
     'username': fields.Str(required=True, validate=validate.Length(8)),

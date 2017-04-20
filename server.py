@@ -1,6 +1,6 @@
 import os
 
-from bucketlistapi.utils import app
+from bucketlistapi.app import app
 
 PORT = int(os.getenv('PORT', 5000))
 

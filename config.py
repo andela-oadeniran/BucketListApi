@@ -1,8 +1,7 @@
 import os
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-DB_URL = os.path.join(
-    os.path.abspath(os.path.dirname(__file__)), 'bucketlist.sqlite')
+DB_URL = os.path.join(BASE_DIR, 'bucketlist.sqlite')
 
 
 class BaseConfig(object):

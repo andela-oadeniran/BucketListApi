@@ -1,11 +1,12 @@
 from flask_restful import Api
-from utils import app
-from resources import (
+
+
+from bucketlistapi import app
+from bucketlistapi.resources import (
     BucketListAPI, BucketListItemAPI, UserRegAPI, UserLoginAPI)
 
 
-api = Api(app, prefix='/api/v1/')
-
+api = Api(app, prefix='/api/v1')
 
 api.add_resource(UserRegAPI, "/auth/register")
 api.add_resource(UserLoginAPI, "/auth/login")
@@ -26,6 +27,7 @@ def home_page():
 
 @app.errorhandler(404)
 def handle_error(message):
-    return "Resource not found", 404
+    return "Resource not found check docs for valid URL endpoints", 404
 
-app.run(debug=True)
+
+app.run()
