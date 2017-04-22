@@ -69,7 +69,6 @@ class BucketListApi(TestCase):
         req = {'name': 'Before December'}
         self.app.post(
             self.bucketlist_url, data=req, headers={'Token': self.token})
-        res = 
 
     def test_invalid_params_post_method(self):
         #
