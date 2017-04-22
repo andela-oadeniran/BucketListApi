@@ -26,14 +26,6 @@ class Base(db.Model):
         db.DateTime(timezone=True), default=db.func.current_timestamp(),
         onupdate=db.func.current_timestamp())
 
-    def as_dict(self):
-        # unpack model properties as dict values and return
-        # this is overridden in the bucketlist class since it needs
-        # to query from the bucketlist items
-        return {col.name: str(getattr(
-            self, col.name))
-            for col in self.__table__.columns}
-
 
 class User(Base):
     '''
@@ -66,15 +58,13 @@ class User(Base):
         s = Serializer(app.config['SECRET_KEY'], expires_in=expiration)
         return s.dumps({'id': self.id})
 
-    @staticmethod
+    @staticmethod 
     def verify_auth_token(token):
         # check token to ascertain validity
         s = Serializer(app.config['SECRET_KEY'])
         try:
             data = s.loads(token)
-        except SignatureExpired:
-            return None  # valid token, but expired
-        except BadSignature:
+        except BadSignature or SignatureExpired:
             return None  # invalid token
         user = User.query.get(data['id'])
         return user
@@ -104,7 +94,7 @@ class BucketList(Base):
 
     def as_dict(self):
         # render the bucketlists
-        items = [str(item.as_dict()) for item in self.items.all()]
+        items = [item.as_dict() for item in self.items.all()]
         return OrderedDict([
             ('id', str(self.id)),
             ('name', str(self.name)),

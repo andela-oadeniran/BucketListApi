@@ -4,7 +4,7 @@ from bucketlistapi import db
 
 
 user_reg_login_field = {
-    'username': fields.Str(required=True, validate=validate.Length(8)),
+    'username': fields.Str(required=True, validate=validate.Length(4)),
     'password': fields.Str(required=True, validate=validate.Length(8))
 }
 

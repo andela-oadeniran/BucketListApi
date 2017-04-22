@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from flask import g, request
-from flask_httpauth import HTTPBasicAuth
+from flask_httpauth import HTTPTokenAuth
 from flask_restful import abort, Resource
 from sqlalchemy import and_
 from webargs.flaskparser import use_args
@@ -11,18 +11,17 @@ from bucketlistapi.utils import (user_reg_login_field, name_field,
 from bucketlistapi.models import BucketList, BucketListItem, User
 from bucketlistapi import db
 
-auth = HTTPBasicAuth()
+auth = HTTPTokenAuth()
 
 
-@auth.verify_password
-def verify_password(username_or_token, password):
-    # first try to authenticate by token
-    user = User.verify_auth_token(username_or_token)
+@auth.verify_token
+def verify_token(token):
+    token = request.headers.get('Token')
+    if not token:
+        return False
+    user = User.verify_auth_token(token)
     if not user:
-        # try to authenticate with username/password
-        user = User.query.filter_by(username=username_or_token).first()
-        if not user or not user.verify_password(password):
-            return False
+        return False
     g.user = user
     return True
 
@@ -48,10 +47,10 @@ class UserRegAPI(Resource):
             return user.as_dict(), 201 if self.save_user(user) else abort(
                 400, message='bad request')
         else:
-            abort(400, message='username/password minimum length is 8')
+            abort(400, message='username/password minimum length is 4/8')
 
     def check_name(self):
-        return self.username.isalpha() and (len(self.username.strip()) > 7)
+        return self.username.isalpha() and (len(self.username.strip()) > 4)
 
     def check_password(self):
         return len(self.password.strip()) > 7
@@ -86,7 +85,7 @@ class UserLoginAPI(Resource):
             username=self.username.strip().title()).first()
         if user and user.verify_password(self.password):
             token = user.generate_auth_token()
-            return {'token': token.decode('ascii')}
+            return {'token': token.decode('ascii')}, 200
         else:
             abort(404, message='Invalid username/password')
 
@@ -108,7 +107,7 @@ class BucketListAPI(Resource):
     decorators = [auth.login_required]
 
     def __init__(self):
-        self.created_by = int(g.user.id)
+        self.created_by = g.user.id
 
     @use_args(name_field)
     def post(self, args, bucketlist_id=None):
@@ -124,7 +123,7 @@ class BucketListAPI(Resource):
         else:
             bucketlist = BucketList(self.name.strip().title(), self.created_by)
             if save(bucketlist):
-                return bucketlist.as_dict(), 201  # return serialize
+                return bucketlist.as_dict(), 201  # return a serialized objedct
             return abort(400, message='Could not save the request!!!')
 
     @use_args(limit_field)
@@ -135,7 +134,7 @@ class BucketListAPI(Resource):
             bucketlist = BucketList.query.filter(and_(
                 BucketList.created_by == self.created_by,
                 BucketList.id == bucketlist_id)).first_or_404()
-            return bucketlist.as_dict()
+            return bucketlist.as_dict(), 200
         else:
             # implement pagination for name search or bucketlists for user
             limit = args.get('limit', 20) if (
@@ -168,7 +167,7 @@ class BucketListAPI(Resource):
                     "pages": bucketlists.pages,
                     "previous_page": prev_page,
                     "next_page": next_page
-                }
+                }, 200
             return abort(404, message='You don\'t have any bucketlist yet!')
 
     @use_args(name_field)
@@ -176,8 +175,9 @@ class BucketListAPI(Resource):
         # update a bucketlist with id(bucketList_id)
         if not bucketlist_id or not (
                 BucketList.query.get(
-                    bucketlist_id).created_by == str(self.created_by)):
-            abort(404, message="method not supported for the URL.")
+                    bucketlist_id).created_by == self.created_by):
+            abort(400, message="method not supported for"
+                  " the URL or invalid bucketlist id.")
         self.name = args.get('name')
         if not self.check_name():
             abort(400, message="name field cannot be empty or too short")
@@ -303,7 +303,7 @@ class BucketListItemAPI(Resource):
 
     def check_bucket_list_with_user(self, bucketlist_id):
         bucketlist = BucketList.query.get(bucketlist_id)
-        return int(bucketlist.created_by) == self.created_by if (
+        return bucketlist.created_by == self.created_by if (
             bucketlist) else False
 
     @staticmethod
@@ -317,7 +317,7 @@ class BucketListItemAPI(Resource):
         bucketlistitem = BucketListItem.query.filter_by(
             name=self.item_name.strip().title()).first()
         if bucketlistitem:
-            return int(BucketList.query.get(
-                bucketlistitem.bucketlist_id).created_by) == self.created_by
+            return BucketList.query.get(
+                bucketlistitem.bucketlist_id).created_by == self.created_by
         return False
 

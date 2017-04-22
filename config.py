@@ -1,7 +1,8 @@
 import os
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-DB_URL = os.path.join(BASE_DIR, 'bucketlist.sqlite')
+MAIN_DB_URL = os.path.join(BASE_DIR, 'bucketlist.sqlite')
+TEST_DB_URL = os.path.join(BASE_DIR, 'test.sqlite')
 
 
 class BaseConfig(object):
@@ -10,20 +11,19 @@ class BaseConfig(object):
     '''
     SECRET_KEY = os.getenv('SECRET_KEY', 'This should be changed')
     SQLALCHEMY_DATABASE_URI = os.getenv(
-        'DATABASE_URI', "'sqlite:///' + {}".format(DB_URL))
+        'DATABASE_URI', "'sqlite:///' + {}".format(MAIN_DB_URL))
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     # CSRF_ENABLED = True
     ERROR_404_HELP = True
     DEBUG = False
     TESTING = False
-    # CSRF_ENABLED = True
 
 
 class DevelopmentConfig(BaseConfig):
     '''
     configuration for the development environment
     '''
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///' + DB_URL
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///' + MAIN_DB_URL
     DEBUG = True
     DEVELOPMENT = True
 
@@ -33,6 +33,7 @@ class TestingConfig(BaseConfig):
     config when testing
     '''
     TESTING = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///' + TEST_DB_URL
 
 
 class StagingConfig(BaseConfig):
