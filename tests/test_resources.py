@@ -42,7 +42,10 @@ class BucketListApi(TestCase):
     def tearDown(self):
         db.session.remove()
         db.session.close()
+<<<<<<< HEAD
         # os.unlink(app.config['SQLALCHEMY_DATABASE_URI'])
+=======
+>>>>>>> test
 
     def test_bl_table_initially_empty(self):
         query = db.session.query(BucketList).all()
@@ -69,6 +72,12 @@ class BucketListApi(TestCase):
         req = {'name': 'Before December'}
         self.app.post(
             self.bucketlist_url, data=req, headers={'Token': self.token})
+<<<<<<< HEAD
+=======
+        res = self.app.get(
+            self.bucketlist_url, headers={'Token': self.token, 'limit': 1})
+        assert res.status_code == 200
+>>>>>>> test
 
     def test_invalid_params_post_method(self):
         #
