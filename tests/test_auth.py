@@ -110,3 +110,13 @@ class TestRegLogin(TestCase):
         resp = self.app.post(
             self.bucketlist_url, data=req, headers={'Token': invalid_token})
         assert resp.status_code == 401
+
+    def test_token_present(self):
+        req = ({'username': 'Adebayo', 'password': 'andela007'})
+        resp = self.app.post(
+            self.bucketlist_url, data=req)
+        assert resp.status_code == 401
+
+    def test_error_404_handler(self):
+        resp = self.app.get('/bucketlists')
+        assert resp.status_code == 404

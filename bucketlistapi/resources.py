@@ -295,15 +295,12 @@ class BucketListItemAPI(Resource):
             abort(404, message='Invalid URL')
         elif db.session.query(BucketListItem).filter_by(id=item_id).delete():
             db.session.commit()
-            return 'Successfully deleted Item'
+            return 'Successfully deleted Item', 200
         else:
             abort(501, message='Server Error')
 
     def check_name(self):
         return len(self.item_name.strip()) > 10 if self.item_name else False
-
-    def check_done(self):
-        return self.done
 
     def check_bucket_list_with_user(self, bucketlist_id):
         bucketlist = BucketList.query.get(bucketlist_id)
@@ -319,9 +316,9 @@ class BucketListItemAPI(Resource):
 
     def check_item_name_with_user(self):
         bucketlistitem = BucketListItem.query.filter_by(
-            name=self.item_name.strip().title()).first() if self.item_name else False
+            name=self.item_name.strip().title()).first() if (
+            self.item_name) else False
         if bucketlistitem:
             return BucketList.query.get(
                 bucketlistitem.bucketlist_id).created_by == self.created_by
         return False
-

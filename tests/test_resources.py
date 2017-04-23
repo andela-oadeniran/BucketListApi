@@ -143,6 +143,10 @@ class BucketListResource(TestCase):
         assert res.status_code == 400
         assert 'Bucket List name already exists' in (
             json.loads(res.data)).get('message')
+        req = {'name': 'Before     '}
+        res = self.app.put(
+            '/api/v1/bucketlists/1', data=req, headers={'Token': token})
+        assert res.status_code == 400
 
 
 class BucketListItemResource(TestCase):
@@ -230,7 +234,14 @@ class BucketListItemResource(TestCase):
         assert res.status_code == 201
         res = self.app.delete('/api/v1/bucketlists/1/items/',
                               headers={'Token': self.token})
-        assert res.status_code == 201
+        assert res.status_code == 405
+        res = self.app.delete('/api/v1/bucketlists/1/items/2',
+                              headers={'Token': self.token})
+        assert res.status_code == 404
+        res = self.app.delete('/api/v1/bucketlists/1/items/1',
+                              headers={'Token': self.token})
+        assert res.status_code == 200
+
 
 
 
