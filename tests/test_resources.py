@@ -4,7 +4,7 @@ from flask_testing import TestCase
 from tests import config, app, db, BucketList, BucketListItem
 
 
-class BucketListApi(TestCase):
+class BucketListResource(TestCase):
     '''
     The test suite for the bucket list bucket list api
     POST : To create a new Bucket List
@@ -72,6 +72,11 @@ class BucketListApi(TestCase):
             self.bucketlist_url, headers={'Token': self.token, 'limit': 1})
         assert res.status_code == 200
 
+        res = self.app.get(
+            self.bucketlist_url, headers={
+                'Token': self.token, 'q': 'December'})
+        assert res.status_code == 200
+
     def test_invalid_params_post_method(self):
         #
         req = {'name': 'Before I turn 50'}
@@ -102,8 +107,128 @@ class BucketListApi(TestCase):
         assert 'Bucket List name already exists' in (
             json.loads(res.data)).get('message')
 
-    def test_get_bucketlist_bucketlists(self):
-        pass
+    def test_put_delete_bucketlist(self):
+        req = {'name': 'Before Marriage'}
+        self.reg_user()
+        token = self.login_user()
+        self.app.post(
+            '/api/v1/bucketlists/', data=req, headers={'Token': token})
+        req = {'name': 'Before January'}
+        res = self.app.put(
+            '/api/v1/bucketlists/1', data=req, headers={'Token': token})
+        assert res.status_code == 200
+        assert 'Before January' in (json.loads(res.data)).get('name')
+        assert BucketList.query.get(1).name == 'Before January'
+        res = self.app.delete(
+            '/api/v1/bucketlists/1', headers={'Token': token})
+        assert res.status_code == 200
+
+    def test_invalid_delete_put_params(self):
+        req = {'name': 'Before January'}
+        self.reg_user()
+        token = self.login_user()
+        self.app.post(
+            '/api/v1/bucketlists/', data=req, headers={'Token': token})
+        req = {'name': 'Before January'}
+        res = self.app.put(
+            '/api/v1/bucketlists/', data=req, headers={'Token': token})
+        assert res.status_code == 405
+        res = self.app.delete(
+            '/api/v1/bucketlists/', headers={'Token': token})
+        assert res.status_code == 405
+        #
+        req = {'name': 'Before January'}
+        res = self.app.put(
+            '/api/v1/bucketlists/1', data=req, headers={'Token': token})
+        assert res.status_code == 400
+        assert 'Bucket List name already exists' in (
+            json.loads(res.data)).get('message')
+
+
+class BucketListItemResource(TestCase):
+    '''
+    '''
+    @staticmethod
+    def init_db():
+        db.drop_all()
+        db.create_all()
+
+    def create_app(self):
+        app.config.from_object('config.TestingConfig')
+        return app
+
+    def setUp(self):
+        app = self.create_app()
+        self.app = app.test_client()
+        with app.app_context():
+            self.init_db()
+        self.user = ({'username': 'marcus', 'password': 'polymath'})
+        self.bucketlist = ({'name': 'Before the end of the Year'})
+        self.item_url = '/api/v1/bucketlists/1/items/'
+
+    def tearDown(self):
+        db.session.remove()
+        db.session.close()
+
+    def reg_user(self):
+        self.app.post('/api/v1/auth/register', data=self.user)
+
+    def login_user(self):
+        resp = json.loads((
+            self.app.post('/api/v1/auth/login', data=self.user).data))
+        self.token = resp.get('token')
+        return self.token
+
+    def post_bucketlist(self):
+        self.app.post('/api/v1/bucketlists/',
+                      data=self.bucketlist, headers={'Token': self.token})
+
+    def test_bucketlist_item(self):
+        self.reg_user()
+        self.login_user()
+        self.post_bucketlist()
+        #
+        req = {'name': 'Learn Python'}
+        res = self.app.post('/api/v1/bucketlists/1/items/1',
+                            data=req, headers={'Token': self.token})
+        assert res.status_code == 405
+        res = self.app.post('/api/v1/bucketlists/2/items/',
+                            data=req, headers={'Token': self.token})
+        assert res.status_code == 404
+        req = {'name': '          learn'}
+        res = self.app.post('/api/v1/bucketlists/1/items/',
+                            data=req, headers={'Token': self.token})
+        assert res.status_code == 400
+        req = {'name': 'Learn Python'}
+        res = self.app.post('/api/v1/bucketlists/1/items/',
+                            data=req, headers={'Token': self.token})
+        assert res.status_code == 201
+        res = self.app.post('/api/v1/bucketlists/1/items/',
+                            data=req, headers={'Token': self.token})
+        assert res.status_code == 400
+        assert 'item name already exists' in (
+            json.loads(res.data)).get('message')
+        #
+        req = {'name': 'Learn JavaScript'}
+        res = self.app.put('/api/v1/bucketlists/1/items/',
+                           data=req, headers={'Token': self.token})
+        assert res.status_code == 405
+        res = self.app.put('/api/v1/bucketlists/2/items/1',
+                           data=req, headers={'Token': self.token})
+        assert res.status_code == 404
+        req = {'name': 'Learn          '}
+        res = self.app.put('/api/v1/bucketlists/1/items/1',
+                           data=req, headers={'Token': self.token})
+        assert res.status_code == 400
+        req = {'name': 'Learn JavaScript'}
+        res = self.app.put('/api/v1/bucketlists/1/items/1',
+                           data=req, headers={'Token': self.token})
+        res.status_code == 201
+        req = {'done': 'True'}
+        res = self.app.put('/api/v1/bucketlists/1/items/1',
+                           data=req, headers={'Token': self.token})
+        assert res.status_code == 201
+
 
 
 

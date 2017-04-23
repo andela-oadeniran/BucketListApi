@@ -176,7 +176,7 @@ class BucketListAPI(Resource):
         if not bucketlist_id or not (
                 BucketList.query.get(
                     bucketlist_id).created_by == self.created_by):
-            abort(400, message="method not supported for"
+            abort(405, message="method not supported for"
                   " the URL or invalid bucketlist id.")
         self.name = args.get('name')
         if not self.check_name():
@@ -196,20 +196,21 @@ class BucketListAPI(Resource):
     def delete(self, bucketlist_id=None):
         # view to delete a bucket list with the associated id
         if not bucketlist_id:
-            abort(404, message="method not supported for the URL")
+            abort(405, message="method not supported for the URL")
         if db.session.query(BucketList).filter(
             and_(
                 BucketList.created_by == self.created_by,
                 BucketList.id == bucketlist_id)).delete():
             db.session.commit()
-            return "successfully deleted bucketlist {}".format(bucketlist_id)
+            return "successfully deleted bucketlist {}".format(
+                bucketlist_id), 200
         else:
             abort(
                 404, message='Bucketlist {} does not exist'.format(
                     bucketlist_id))
 
     def check_name(self):
-        return len(self.name.strip()) > 7
+        return len(self.name.strip()) > 9
 
     def bucket_list_name_exists(self):
         bucketlist = BucketList.query.filter_by(
@@ -269,15 +270,18 @@ class BucketListItemAPI(Resource):
             abort(404, message='Invalid bucketlist/item id in URL')
         self.item_name = args.get('name')
         self.done = args.get('done')
-        if self.check_name() and not self.check_item_name_with_user():
-            abort(400, message='item name exists or is invalid')
-        if (db.session.query(BucketListItem).filter_by(
-                id=item_id).update({'name': self.item_name.strip().title()})):
-            db.session.commit()
-        if (self.done and db.session.query(BucketListItem).filter_by(
-                id=item_id).update({'done': True})):
-            db.session.commit()
-        return BucketListItem.query.get(item_id).as_dict()
+        if (self.check_item_name_with_user()):
+            abort(400, message='item name already exists')
+        if (self.item_name is not None) and (not self.check_name()):
+            abort(400, message='invalid item name')
+        (db.session.query(BucketListItem).filter_by(
+            id=item_id).update(
+                {'name': self.item_name.strip().title()})) if (
+            self.item_name) else False
+        db.session.query(BucketListItem).filter_by(
+            id=item_id).update({'done': True}) if self.done else False
+        db.session.commit()
+        return BucketListItem.query.get(item_id).as_dict(), 201
 
     def delete(self, bucketlist_id, item_id=None):
         # method handles the delete request to the route
@@ -315,7 +319,7 @@ class BucketListItemAPI(Resource):
 
     def check_item_name_with_user(self):
         bucketlistitem = BucketListItem.query.filter_by(
-            name=self.item_name.strip().title()).first()
+            name=self.item_name.strip().title()).first() if self.item_name else False
         if bucketlistitem:
             return BucketList.query.get(
                 bucketlistitem.bucketlist_id).created_by == self.created_by
