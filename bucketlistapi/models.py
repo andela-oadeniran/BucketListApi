@@ -58,7 +58,7 @@ class User(Base):
         s = Serializer(app.config['SECRET_KEY'], expires_in=expiration)
         return s.dumps({'id': self.id})
 
-    @staticmethod 
+    @staticmethod
     def verify_auth_token(token):
         # check token to ascertain validity
         s = Serializer(app.config['SECRET_KEY'])
@@ -70,8 +70,8 @@ class User(Base):
         return user
 
     def as_dict(self):
-        return "Hello your username is {} with password ***{}***".format(
-            self.username, self.password[3:-3])
+        return "Hello your username is {} ".format(
+            self.username)
 
     def __repr__(self):
         return '<Created by {}>'.format(self.username)

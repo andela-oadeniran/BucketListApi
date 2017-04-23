@@ -84,7 +84,7 @@ class BucketListResource(TestCase):
         self.token = self.login_user()
         res = self.app.post(
             '/api/v1/bucketlists/1', data=req, headers={'Token': self.token})
-        assert res.status_code == 404
+        assert res.status_code == 405
         assert not BucketList.query.get(1)
         req = {'name': '          '}
         res = self.app.post(

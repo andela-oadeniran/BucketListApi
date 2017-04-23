@@ -14,7 +14,7 @@ class BaseConfig(object):
         'DATABASE_URI', "'sqlite:///' + {}".format(MAIN_DB_URL))
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     # CSRF_ENABLED = True
-    ERROR_404_HELP = True
+    ERROR_404_HELP = False
     DEBUG = False
     TESTING = False
 
