@@ -13,6 +13,9 @@
 5. [Other Features](#other-features)
 6. [Running Tests](#running-tests)
 7. [Project Demo](#project-demo)
+8  [Author](#author)
+9. [LICENSE](#license)
+10.[FINAL WORDS](#final-words)
 
 ### <a name="introduction"></a>Introduction
 A little background. Everybody has those things they plan to do before a reference point in their life. That is why you make a Bucket List. The BucketListApi can be easily integrated to your application to help serve this end. This is an Andela idea/project to help pre-entry level developers hone their programming (in this case python) skills.
@@ -210,13 +213,13 @@ Response
 ### <a name="project-demo"></a>Project Demo
 Click [here](https://www.youtube.com/watch?v=9wzH5_iwY5o) to view a short project demo
 
-## Author
+## <a name="author"></a>Author
 Oladipupo Adeniran
 
-## License
-<a href='https://github.com/andela-hoyeboade/bucketlist-api/blob/develop/LICENSE'>MIT </a>
+## <a name="license"></a>License
+<a href='https://github.com/andela-oadeniran/bucketlist-api/blob/develop/LICENSE'>MIT </a>
 
-## Final Words
+## <a name="final-words"></a>Final Words
 Appreciation goes to
 1. All the Folks at Andela because we are EPIC and awesome like that
 2. Special shout out goes to Njira Perci you can follow her [@njirap](). She is an Amazing Human Being and literally propelled the discipline and doggedness to accomplish this task.
