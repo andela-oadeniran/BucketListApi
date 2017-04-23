@@ -228,6 +228,9 @@ class BucketListItemResource(TestCase):
         res = self.app.put('/api/v1/bucketlists/1/items/1',
                            data=req, headers={'Token': self.token})
         assert res.status_code == 201
+        res = self.app.delete('/api/v1/bucketlists/1/items/',
+                              headers={'Token': self.token})
+        assert res.status_code == 201
 
 
 
