@@ -217,3 +217,7 @@ Oladipupo Adeniran
 <a href='https://github.com/andela-hoyeboade/bucketlist-api/blob/develop/LICENSE'>MIT </a>
 
 ## Final Words
+Appreciation goes to
+1. All the Folks at Andela because we are EPIC and awesome like that
+2. Special shout out goes to Njira Perci you can follow her [@njirap](). She is an Amazing Human Being and literally propelled the discipline and doggedness to accomplish this task.
+3. "pygo" team members at Andela because we would do great things together.
