@@ -41,7 +41,7 @@ class UserRegAPI(Resource):
         self.password = args.get('password')
         if self.check_user_exists():
             abort(400, message='username already exists')
-        if (self.check_name() and
+        if (self.check_username() and
                 self.check_password()):
             user = self.create_new_user()
             return user.as_dict(), 201 if self.save_user(user) else abort(
@@ -49,8 +49,8 @@ class UserRegAPI(Resource):
         else:
             abort(400, message='username/password minimum length is 4/8')
 
-    def check_name(self):
-        return self.username.isalpha() and (len(self.username.strip()) > 4)
+    def check_username(self):
+        return len(self.username.strip()) > 4
 
     def check_password(self):
         return len(self.password.strip()) > 7
@@ -113,7 +113,7 @@ class BucketListAPI(Resource):
     def post(self, args, bucketlist_id=None):
         # This handles the creation of a new bucketlist
         if bucketlist_id:
-            abort(404, message="method not supported for the URL")
+            abort(405, message="method not supported for the URL")
         self.name = args.get('name')  # self.parser.parse_args().get('name')
         if not self.check_name():
             abort(400,
@@ -142,6 +142,9 @@ class BucketListAPI(Resource):
             page = args.get('page', 1)
             name_search = args.get('q')
             bucketlists = g.user.bucketlists
+            if not bucketlists.all():
+                return abort(
+                    404, message='You don\'t have any bucketlist yet!')
             if name_search:
                 bucketlists = bucketlists.filter(
                     BucketList.name.ilike("%{}%".format(name_search.title())))
@@ -168,7 +171,6 @@ class BucketListAPI(Resource):
                     "previous_page": prev_page,
                     "next_page": next_page
                 }, 200
-            return abort(404, message='You don\'t have any bucketlist yet!')
 
     @use_args(name_field)
     def put(self, args, bucketlist_id=None):
