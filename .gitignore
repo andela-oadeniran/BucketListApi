@@ -14,7 +14,6 @@ htmlcov/
 .coverage
 .coverage.*
 .cache
-nosetests.xml
 coverage.xml
 *,cover
 
@@ -22,22 +21,10 @@ coverage.xml
 *.sqlite
 
 
-
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-
 # dotenv
 .env
 settings.cfg
 
-
-
-#env set up
-bucket.sublime-project
-bucket.sublime-workspace
 
 #DS files
 .DS_Store
