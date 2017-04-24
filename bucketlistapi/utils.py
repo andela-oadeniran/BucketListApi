@@ -1,5 +1,7 @@
 # from bucketlist import db
+from flask_restful import abort
 from webargs import fields, validate
+
 from bucketlistapi import db
 
 
@@ -32,4 +34,4 @@ def save(obj):
         return True
     except Exception:
         db.session.rollback()
-        return False
+        abort(400, message='Request cannot be handled now')

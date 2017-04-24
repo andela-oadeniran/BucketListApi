@@ -28,6 +28,3 @@ api.add_resource(
     BucketListItemAPI, "/bucketlists/<int:bucketlist_id>/items",
     "/bucketlists/<int:bucketlist_id>/items/",
     "/bucketlists/<int:bucketlist_id>/items/<int:item_id>")
-
-
-

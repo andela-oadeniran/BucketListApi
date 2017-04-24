@@ -128,5 +128,3 @@ class BucketListItem(Base):
 
     def __repr__(self):
         return '<BucketListItem {}>'.format(self.name)
-
-

@@ -4,8 +4,6 @@ from flask_httpauth import HTTPTokenAuth
 from flask_restful import abort, Resource
 from sqlalchemy import and_
 from webargs.flaskparser import use_args
-
-
 from bucketlistapi.utils import (user_reg_login_field, name_field,
                                  name_done_field, limit_field, save)
 from bucketlistapi.models import BucketList, BucketListItem, User
@@ -41,8 +39,8 @@ class UserRegAPI(Resource):
         self.password = args.get('password')
         self.__check_valid_data()
         user = self.__create_new_user()
-        return user.as_dict(), 201 if self.save_user(user) else abort(
-            400, message='Request could not be processed!')
+        save(user)
+        return user.as_dict(), 201
 
     def __check_valid_data(self):
         # check for edge cases and return valid error
@@ -135,9 +133,8 @@ class BucketListAPI(Resource):
             abort(405, message="method not supported for the URL")
         self.bucketlist_name = args.get('name')
         bucketlist = self.__create_bucketlist()
-        if save(bucketlist):
-            return bucketlist.as_dict(), 201  # return a serialized objedct
-        return abort(400, message='Could not save the request!!!')
+        save(bucketlist)
+        return bucketlist.as_dict(), 201  # return a serialized objedct
 
     @use_args(limit_field)
     def get(self, args, bucketlist_id=None):
@@ -299,26 +296,30 @@ class BucketListItemAPI(Resource):
         if item_id:
             abort(405,
                   message='The method is not supported for the requested URL')
-        if not self.check_bucket_list_with_user(bucketlist_id):
-            abort(404, message='invalid bucketlist id check URL')
         self.item_name = args.get('name')
-        if not self.check_item_name():
+        self.__check_valid_item(bucketlist_id)
+        item = self.__create_item(bucketlist_id)
+        save(item)
+        return item.as_dict(), 201
+
+    def __check_valid_item(self, bucketlist_id):
+        # return appropriate error message just in case
+        if not self.check_bucket_list_with_user(bucketlist_id):
+            abort(404, message='invalid URL check bucketlist id or item id')
+        elif not self.check_item_name():
             abort(400, message='item name required'
                   ' and must have at least 10 characters')
         elif self.check_item_name_with_user():
             abort(400, message='item name already exists')
-        else:
-            item = BucketListItem(
-                self.item_name.strip().title(), bucketlist_id)
-            if save(item):
-                return item.as_dict(), 201
-            else:
-                abort(400, message='item name could not be saved')
+
+    def __create_item(self, bucketlist_id):
+        # return an item object
+        return BucketListItem(
+            self.item_name.strip().title(), bucketlist_id)
 
     @use_args(name_done_field)
     def put(self, args, bucketlist_id, item_id=None):
-        # method handles the put request to the resource
-        # name = request.args.get('name') or self.done
+        # method handles the put request Update to the resource
         if not item_id:
             abort(405,
                   message='The method is not supported for the requested URL')
@@ -388,4 +389,3 @@ class BucketListItemAPI(Resource):
                 id=item_id).update(
                 {'done': True}))
         db.session.commit()
-
