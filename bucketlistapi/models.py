@@ -40,8 +40,8 @@ class User(Base):
                                   cascade='all, delete-orphan', lazy='dynamic'
                                   )
 
-    def __init__(self, name, password):
-        self.username = name
+    def __init__(self, username, password):
+        self.username = username
         self.password = password
 
     def hash_password(self):
@@ -66,8 +66,7 @@ class User(Base):
             data = s.loads(token)
         except BadSignature or SignatureExpired:
             return None  # invalid token
-        user = User.query.get(data['id'])
-        return user
+        return User.query.get(data['id'])
 
     def as_dict(self):
         return "Hello your username is {} ".format(

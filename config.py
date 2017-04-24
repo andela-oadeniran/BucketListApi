@@ -13,7 +13,6 @@ class BaseConfig(object):
     SQLALCHEMY_DATABASE_URI = os.getenv(
         'DATABASE_URI', "'sqlite:///' + {}".format(MAIN_DB_URL))
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    # CSRF_ENABLED = True
     ERROR_404_HELP = False
     DEBUG = False
     TESTING = False
@@ -34,6 +33,7 @@ class TestingConfig(BaseConfig):
     '''
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///' + TEST_DB_URL
+    CSRF_ENABLED = False
 
 
 class StagingConfig(BaseConfig):
@@ -45,6 +45,4 @@ class ProductionConfig(BaseConfig):
     '''
     config for when in production
     '''
-    # SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(
-    #     BASE_DIR + '.sqlite')
     DEBUG = False
