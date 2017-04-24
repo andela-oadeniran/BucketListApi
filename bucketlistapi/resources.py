@@ -133,43 +133,29 @@ class BucketListAPI(Resource):
         # This handles the creation of a new bucketlist
         if bucketlist_id:
             abort(405, message="method not supported for the URL")
-        self.name = args.get('name')  # self.parser.parse_args().get('name')
-        if not self.check_bucketlist_name():
-            abort(400,
-                  message='Bucketlist name must be at least 8 characters')
-        elif self.bucket_list_name_exists():
-            abort(400, message='Bucket List name already exists')
-        else:
-            bucketlist = BucketList(self.name.strip().title(), self.created_by)
-            if save(bucketlist):
-                return bucketlist.as_dict(), 201  # return a serialized objedct
-            return abort(400, message='Could not save the request!!!')
+        self.bucketlist_name = args.get('name')
+        bucketlist = self.__create_bucketlist()
+        if save(bucketlist):
+            return bucketlist.as_dict(), 201  # return a serialized objedct
+        return abort(400, message='Could not save the request!!!')
 
     @use_args(limit_field)
     def get(self, args, bucketlist_id=None):
         # get the list of bucket lists or an item and return.
         if bucketlist_id:
             # return the bucketlist with the bucketlist id specified
-            bucketlist = self.get_a_single_bucketlist(bucketlist_id)
+            bucketlist = self.__get_a_single_bucketlist(bucketlist_id)
             return bucketlist.as_dict(), 200
         else:
             # implement pagination for name search or bucketlists for user
             limit = args.get('limit', 20) if (
                 args.get('limit', 20) < 100) else 100
             page = args.get('page', 1)
-            name_search = args.get('q')
+            search_name = args.get('q', None)
             bucketlists = g.user.bucketlists
-            if not bucketlists.all():
-                return abort(
-                    404, message='You don\'t have any bucketlist yet!')
-            if name_search:
-                bucketlists = bucketlists.filter(
-                    BucketList.name.ilike("%{}%".format(name_search.title())))
-            if not bucketlists.all():
-                abort(
-                    404, message='no bucketlist containing {}'
-                    .format(name_search))
-            resp = self.paginate(bucketlists, page, limit, request.url_root)
+            bucketlists = self.__check_valid_get_params(
+                bucketlists, search_name)
+            resp = self.__paginate(bucketlists, page, limit, request.url_root)
             return {
                 'data': resp[0],
                 'pages': resp[1],
@@ -180,17 +166,16 @@ class BucketListAPI(Resource):
     @use_args(name_field)
     def put(self, args, bucketlist_id=None):
         # update a bucketlist with id(bucketList_id)
-        if not bucketlist_id or not (
-                BucketList.query.get(
-                    bucketlist_id).created_by == self.created_by):
+        if not bucketlist_id:
             abort(405, message='method not supported for'
-                  ' the URL or invalid bucketlist id.')
-        self.name = args.get('name')
-        if not self.check_bucketlist_name():
-            abort(400, message='name field cannot be empty or too short')
-        elif self.bucket_list_name_exists():
-            abort(400, message='Bucket List name already exists')
-        elif self.update_bucketlist(bucketlist_id):
+                  ' the URL.')
+        if (not BucketList.query.get(bucketlist_id)) or(
+            not(BucketList.query.get(
+                bucketlist_id).created_by == self.created_by)):
+            abort(404, message='invalid url')
+        self.bucketlist_name = args.get('name')
+        self.__check_valid_bucketlist()
+        if self.__update_bucketlist(bucketlist_id):
             db.session.commit()
             return BucketList.query.get(bucketlist_id).as_dict()
         abort(400, message='Could not update bucketlist {}'.format(
@@ -200,42 +185,57 @@ class BucketListAPI(Resource):
         # method view to delete a bucket list with the associated id
         if not bucketlist_id:
             abort(405, message='method not supported for the URL')
-        if self.delete_bucketlist(bucketlist_id):
+        elif self.__delete_bucketlist(bucketlist_id):
             db.session.commit()
             return 'successfully deleted bucketlist {}'.format(
                 bucketlist_id), 200
+        abort(404, message='Bucketlist {} does not exist'.format(
+              bucketlist_id))
+
+    def __create_bucketlist(self):
+        # create and return a bucketlist
+        self.__check_valid_bucketlist()
+        bucketlist = BucketList(
+            self.bucketlist_name.strip().title(), self.created_by)
+        return bucketlist
+
+    def __check_valid_bucketlist(self):
+        # return appropriate error message for invalid bucketlist name
+        if not self.__check_bucketlist_name():
+            abort(400,
+                  message='Bucketlist name must be at least 8 characters')
+        elif self.__bucketlist_name_exists():
+            abort(400, message='Bucket List name already exists')
         else:
-            abort(
-                404, message='Bucketlist {} does not exist'.format(
-                    bucketlist_id))
+            pass
 
-    def check_bucketlist_name(self):
+    def __check_bucketlist_name(self):
         # bucketlist name must satisfy the condition
-        return len(self.name.strip()) > 9
+        return len(self.bucketlist_name.strip()) > 9
 
-    def bucket_list_name_exists(self):
+    def __bucketlist_name_exists(self):
         bucketlist = BucketList.query.filter_by(
-            name=self.name.strip().title()).first()
+            name=self.bucketlist_name.strip().title()).first()
         return int(bucketlist.created_by) == self.created_by if (
             bucketlist) else False
 
-    def delete_bucketlist(self, bucketlist_id):
+    def __delete_bucketlist(self, bucketlist_id):
         # delete the bucketlist with bucketlist_id
         return db.session.query(BucketList).filter(
             and_(
                 BucketList.created_by == self.created_by,
                 BucketList.id == bucketlist_id)).delete()
 
-    def update_bucketlist(self, bucketlist_id):
+    def __update_bucketlist(self, bucketlist_id):
         # for the PUT method update the bucketlist
         return db.session.query(
             BucketList).filter(and_(
                 BucketList.created_by == self.created_by,
                 BucketList.id == bucketlist_id)).update(
-                {'name': self.name.strip().title()})
+                {'name': self.bucketlist_name.strip().title()})
 
     @staticmethod
-    def paginate(bucketlists, page, limit, url_root):
+    def __paginate(bucketlists, page, limit, url_root):
         # paginate the queried object containing bucketlists
         bucketlists = bucketlists.paginate(
             page=page, per_page=limit, error_out=False)
@@ -251,11 +251,30 @@ class BucketListAPI(Resource):
             for bucketlist in bucketlists.items])
         return [bucketlists_per_page, bucketlists.pages, prev_page, next_page]
 
-    def get_a_single_bucketlist(self, bucketlist_id):
+    def __get_a_single_bucketlist(self, bucketlist_id):
         # return Erro 404 if it does not exist
         return BucketList.query.filter(and_(
             BucketList.created_by == self.created_by,
             BucketList.id == bucketlist_id)).first_or_404()
+
+    def __check_valid_get_params(self, bucketlists, search_name=None):
+        # return bucketlists based on the condition
+        if not bucketlists.all():
+            abort(404, message='You don\'t have any bucketlist yet!')
+        elif search_name:
+            bucketlists = self.__get_bucketlists_with_name(
+                bucketlists, search_name)
+            if not bucketlists:
+                abort(404, message='no bucketlist containing {}'.format(
+                    search_name))
+            return bucketlists
+        return bucketlists
+
+    @staticmethod
+    def __get_bucketlists_with_name(bucketlists, search_name):
+        # query and return bucketlists matching the name
+        return bucketlists.filter(
+            BucketList.name.ilike("%{}%".format(search_name.title())))
 
 
 class BucketListItemAPI(Resource):
