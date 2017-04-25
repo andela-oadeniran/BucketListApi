@@ -12,9 +12,9 @@
 5. [Other Features](#other-features)
 6. [Running Tests](#running-tests)
 7. [Project Demo](#project-demo)
-8  [Author](#author)
+8. [Author](#author)
 9. [LICENSE](#license)
-10.[FINAL WORDS](#final-words)
+10. [FINAL WORDS](#final-words)
 
 ### <a name="introduction"></a>Introduction
 A little background. Everybody has those things they plan to do before a reference point in their life. That is why you make a Bucket List. The BucketListApi can be easily integrated to your application to help serve this end. This is an Andela idea/project to help pre-entry level developers hone their programming (in this case python) skills.
