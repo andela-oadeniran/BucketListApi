@@ -1,13 +1,9 @@
 from collections import OrderedDict
-from flask_sqlalchemy import SQLAlchemy
 from itsdangerous import (TimedJSONWebSignatureSerializer
                           as Serializer, BadSignature, SignatureExpired)
 from passlib.apps import custom_app_context as pwd_context
 
-from bucketlistapi import app
-
-
-db = SQLAlchemy()
+from bucketlistapi import app, db
 
 
 class Base(db.Model):
