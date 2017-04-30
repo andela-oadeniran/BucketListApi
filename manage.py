@@ -1,8 +1,8 @@
 from flask_script import Manager
 from flask_migrate import Migrate, MigrateCommand
 
-from bucketlistapi import db
-from bucketlistapi.app import app
+from bucketlist_api import db
+from bucketlist_api.app import app
 
 app.config.from_object('config.DevelopmentConfig')
 app.config.from_envvar('BUCKETLIST_SETTINGS', silent=True)

@@ -1,9 +1,10 @@
 from collections import OrderedDict
+
 from itsdangerous import (TimedJSONWebSignatureSerializer
                           as Serializer, BadSignature, SignatureExpired)
 from passlib.apps import custom_app_context as pwd_context
 
-from bucketlistapi import app, db
+from bucketlist_api import app, db
 
 
 class Base(db.Model):
@@ -25,8 +26,8 @@ class Base(db.Model):
 
 class User(Base):
     '''
-    This model holds data for a User attributes are
-    The user ID, Username and Password_Hash for verification.
+    This model holds data for a single User.
+    The user ID, Username and Password_Hash used for verification.
     '''
     username = db.Column(
         db.String(256), nullable=False, unique=True)
@@ -60,8 +61,10 @@ class User(Base):
         s = Serializer(app.config['SECRET_KEY'])
         try:
             data = s.loads(token)
-        except BadSignature or SignatureExpired:
-            return None  # invalid token
+        except BadSignature:
+            raise ValueError  # invalid token
+        except SignatureExpired:
+            return None
         return User.query.get(data['id'])
 
     def as_dict(self):
@@ -69,7 +72,9 @@ class User(Base):
             self.username)
 
     def __repr__(self):
-        return '<Created by {}>'.format(self.username)
+        return {
+            "username": self.username
+        }
 
 
 class BucketList(Base):
@@ -113,7 +118,7 @@ class BucketListItem(Base):
     bucketlist_id = db.Column(db.Integer, db.ForeignKey(
         'bucket_list.id'))
 
-    def __init__(self, item_name, bucketlist_id, done=False):
+    def __init__(self, item_name, bucketlist_id):
         self.name = item_name
         self.bucketlist_id = bucketlist_id
 

@@ -2,7 +2,7 @@
 from flask_restful import abort
 from webargs import fields, validate
 
-from bucketlistapi import db
+from bucketlist_api import db
 
 
 user_reg_login_field = {

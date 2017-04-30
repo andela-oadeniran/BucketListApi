@@ -207,7 +207,7 @@ Response
 
 ### <a name="running-tests"></a>Running Tests
 1. Navigate to the project directory.
-2. Run `py.test --cov-report term-missing --cov bucketlistapi` to run test and check coverage.
+2. Run `py.test --cov-report term-missing --cov bucketlist_api` to run test and check coverage.
 
 ### <a name="project-demo"></a>Project Demo
 Click [here](https://www.youtube.com/watch?v=9wzH5_iwY5o) to view a short project demo

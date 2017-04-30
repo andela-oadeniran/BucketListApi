@@ -1,13 +1,15 @@
 from collections import OrderedDict
+
 from flask import g, request
 from flask_httpauth import HTTPTokenAuth
 from flask_restful import abort, Resource
 from sqlalchemy import and_
 from webargs.flaskparser import use_args
-from bucketlistapi.utils import (user_reg_login_field, name_field,
-                                 name_done_field, limit_field, save)
-from bucketlistapi.models import BucketList, BucketListItem, User
-from bucketlistapi import db
+
+from bucketlist_api.utils import (user_reg_login_field, name_field,
+                                  name_done_field, limit_field, save)
+from bucketlist_api.models import BucketList, BucketListItem, User
+from bucketlist_api import db
 
 auth = HTTPTokenAuth()
 
@@ -16,10 +18,13 @@ auth = HTTPTokenAuth()
 def verify_token(token):
     token = request.headers.get('Token')
     if not token:
-        return False
-    user = User.verify_auth_token(token)
+        abort(401, message='Token is required in the Request Header!')
+    try:
+        user = User.verify_auth_token(token)
+    except ValueError:
+        abort(401, message='You have supplied an Invalid TOKEN')
     if not user:
-        return False
+        abort(401, message='TOKEN Supplied Expired')
     g.user = user
     return True
 
@@ -37,26 +42,25 @@ class UserRegAPI(Resource):
         # call methods to save user data and return success or otherwise
         self.username = args.get('username')
         self.password = args.get('password')
-        self.__check_valid_data()
+        self.__validate_data()
         user = self.__create_new_user()
         save(user)
         return user.as_dict(), 201
 
-    def __check_valid_data(self):
+    def __validate_data(self):
         # check for edge cases and return valid error
         if self.__check_user_exists():
             abort(400, message='username already exists')
-        elif not (self.__check_username() and self.__check_password()):
-            abort(400, message='username/password minimum length is 4/8')
-        else:
-            pass
+        elif not (self.__validate_username() and self.__validate_password()):
+            abort(400, message='You supplied an invalid username or password'
+                  ' username/password must have a minimum length of 4/8')
 
-    def __check_username(self):
-        # username must be at leasr 4 characters long
+    def __validate_username(self):
+        # username must be at least 5 characters long
         return len(self.username.strip()) > 4
 
-    def __check_password(self):
-        # password minimum length is 7
+    def __validate_password(self):
+        # password minimum length is 8
         return len(self.password.strip()) > 7
 
     def __create_new_user(self):
@@ -92,9 +96,10 @@ class UserLoginAPI(Resource):
     def __verify_user(self):
         # verify a user's detail's
         user = self.__get_user()
-        return user if (
-            user and user.verify_password(self.password)) else abort(
-            404, message="Invalid username/password")
+        if user:
+            return user
+        else:
+            abort(404, message='Invalid username/password')
 
     @staticmethod
     def generate_auth_token(user):
@@ -145,19 +150,19 @@ class BucketListAPI(Resource):
             return bucketlist.as_dict(), 200
         else:
             # implement pagination for name search or bucketlists for user
-            limit = args.get('limit', 20) if (
-                args.get('limit', 20) < 100) else 100
+            limit = min(args.get('limit', 20), 100)
             page = args.get('page', 1)
             search_name = args.get('q', None)
             bucketlists = g.user.bucketlists
             bucketlists = self.__check_valid_get_params(
                 bucketlists, search_name)
-            resp = self.__paginate(bucketlists, page, limit, request.url_root)
+            data, pages, previous_page, next_page = self.__paginate(
+                bucketlists, page, limit, request.url_root)
             return {
-                'data': resp[0],
-                'pages': resp[1],
-                'previous_page': resp[2],
-                'next_page': resp[3]
+                'data': data,
+                'pages': pages,
+                'previous_page': previous_page,
+                'next_page': next_page
             }, 200
 
     @use_args(name_field)
@@ -203,8 +208,6 @@ class BucketListAPI(Resource):
                   message='Bucketlist name must be at least 8 characters')
         elif self.__bucketlist_name_exists():
             abort(400, message='Bucket List name already exists')
-        else:
-            pass
 
     def __check_bucketlist_name(self):
         # bucketlist name must satisfy the condition

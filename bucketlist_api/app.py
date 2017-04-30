@@ -1,15 +1,14 @@
-from flask_restful import Api  # abort
+from flask_restful import Api
 
-
-from bucketlistapi import app
-from bucketlistapi.resources import (
+from bucketlist_api import app
+from bucketlist_api.resources import (
     BucketListAPI, BucketListItemAPI, UserRegAPI, UserLoginAPI)
 
 
 @app.route('/', methods=['GET'])
 def home_page():
-    return 'Welcome to BucketList API Home. '\
-        'Register and Login to start using the Service', 200
+    return 'Welcome to BucketList API Home. '
+    'Register and Login to start using the Service', 200
 
 
 @app.errorhandler(404)
